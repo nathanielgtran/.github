@@ -1,0 +1,31 @@
+name: CI
+
+# GitHub-hosted on purpose: this repo is public, and a self-hosted NUC runner
+# on a public repo would let fork PRs run code on the NUC.
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: bash tests/test-check-pr-body.sh
+
+  # Dogfood: this repo's own PRs must pass the check, loaded from the PR head.
+  pr-template:
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/pr-template-check.yml
+    with:
+      ref: ${{ github.event.pull_request.head.sha }}
+      runs_on: '"ubuntu-latest"'

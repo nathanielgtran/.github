@@ -1,0 +1,51 @@
+# Reusable workflow: fail a PR whose body skips the fleet PR template
+# (What / Why / Proof / Risk + rollback, each non-empty).
+#
+# Caller (each repo, .github/workflows/pr-template.yml):
+#
+#   on:
+#     pull_request:
+#       types: [opened, edited, reopened, synchronize]
+#   jobs:
+#     pr-template:
+#       uses: nathanielgtran/.github/.github/workflows/pr-template-check.yml@<sha>
+#       with:
+#         ref: <same sha>
+#
+# Bot PRs (Dependabot etc.) are skipped: they never fill the template.
+
+name: PR template check
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "nathanielgtran/.github ref to load the checker from; pin the same SHA as the uses: line."
+        required: false
+        type: string
+        default: main
+      runs_on:
+        description: "JSON runner label(s). Fleet default is the NUC; only this public repo overrides it."
+        required: false
+        type: string
+        default: '["self-hosted", "nuc"]'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    if: github.event.pull_request.user.type != 'Bot'
+    runs-on: ${{ fromJSON(inputs.runs_on) }}
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: nathanielgtran/.github
+          ref: ${{ inputs.ref }}
+          path: .pr-template-check
+          persist-credentials: false
+      - name: Check PR body against template
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: printf '%s' "${PR_BODY}" | bash .pr-template-check/scripts/check-pr-body.sh
