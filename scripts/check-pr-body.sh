@@ -1,7 +1,8 @@
 #!/bin/bash
 # Fail if a PR body is missing a required template section or leaves it empty.
 # Usage: check-pr-body.sh <body-file>   (or body on stdin)
-# HTML comments (the template's hints) don't count as content.
+# HTML comments (the template's hints) and the template's empty skeleton lines
+# (<details>/<summary> tags, bare code fences, bare **Label:**) don't count as content.
 set -euo pipefail
 
 REQUIRED=("What" "Why" "Proof" "Risk + rollback")
@@ -41,7 +42,16 @@ section_content() {
       found = found || in_sec
       next
     }
-    in_sec && $0 ~ /[^[:space:]]/ { print }
+    in_sec {
+      t = $0
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", t)
+      if (t == "") next
+      if (t ~ /^<details[^>]*>$/ || t == "</details>") next
+      if (t ~ /^<summary>[^<]*<\/summary>$/) next
+      if (t ~ /^(```|~~~)[A-Za-z0-9_+-]*$/) next
+      if (t ~ /^\*\*[^*]+:\*\*$/) next
+      print
+    }
     END { if (!found) exit 2 }'
 }
 
