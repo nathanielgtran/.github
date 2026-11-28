@@ -47,7 +47,7 @@ section_content() {
       gsub(/^[[:space:]]+|[[:space:]]+$/, "", t)
       if (t == "") next
       if (t ~ /^<details[^>]*>$/ || t == "</details>") next
-      if (t ~ /^<summary>[^<]*<\/summary>$/) next
+      if (tolower(t) == "<summary>full output</summary>") next
       if (t ~ /^(```|~~~)[A-Za-z0-9_+-]*$/) next
       if (t ~ /^\*\*[^*]+:\*\*$/) next
       print
