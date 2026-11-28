@@ -1,0 +1,53 @@
+schema: spec-driven
+
+context: |
+  Repo: nathanielgtran/.github (local checkout: dotgithub). PUBLIC.
+  Purpose: fleet-wide pull request template and the `pr-template` check. GitHub uses this
+  repo's PULL_REQUEST_TEMPLATE.md as the default for every nathanielgtran repo without its own,
+  and ~23 fleet repos call the reusable workflow to fail PRs whose body skips the template.
+
+  Files:
+    - PULL_REQUEST_TEMPLATE.md: What / Why / Proof / Risk + rollback / Checklist
+    - scripts/check-pr-body.sh: the checker (bash + awk, reads body from file arg or stdin)
+    - tests/test-check-pr-body.sh: plain-bash tests for the checker
+    - .github/workflows/pr-template-check.yml: reusable workflow (workflow_call)
+    - .github/workflows/ci.yml: runs the tests, and dogfoods the check on this repo's own PRs
+
+  Stack (do NOT introduce alternatives without asking):
+    Scripts:  bash (`#!/bin/bash`, set -euo pipefail), POSIX/GNU awk, no other dependencies
+    CI:       GitHub Actions. This repo runs on ubuntu-latest because it is public (a self-hosted
+              NUC runner on a public repo would run fork PR code on the NUC). Fleet callers
+              default to `["self-hosted", "nuc"]`.
+    Callers:  pin `uses:` and `with: ref:` to the same commit SHA, so a change here reaches a
+              repo only when its pin is bumped.
+
+  Test commands:
+    - bash tests/test-check-pr-body.sh
+
+  Lint: none configured.
+
+  Conventions:
+    - Commits: [NO-TICKET] type: description. Branch + PR always; never push main.
+    - CHANGELOG.md incrementing IDs type-N (feat-N, chore-N, fix-N) under "## Unreleased".
+    - PR bodies follow PULL_REQUEST_TEMPLATE.md; the repo's own CI enforces it.
+    - Never swallow errors; early returns.
+    - No Claude co-author or "Generated with" footer in commits or PR bodies.
+
+  Blast radius: the template and checker are shared by every fleet repo. A change to check
+  behaviour can turn green PRs red once a caller bumps its pin. Treat template headings and
+  checker pass/fail semantics as a public contract.
+
+rules:
+  proposal:
+    - Always include a "Non-goals" section.
+    - State which fleet-visible behaviour changes (template headings, which inputs now fail or pass, exit codes, workflow inputs).
+    - State how callers pick the change up (pin bump) and whether any existing PR body would newly fail.
+  tasks:
+    - Every checker behaviour change gets a case in tests/test-check-pr-body.sh, added before the change.
+    - Keep each task independently reviewable.
+
+operations:
+  apply:
+    guidance:
+      - Run bash tests/test-check-pr-body.sh before committing; it must print "all passed".
+      - Check that CHANGELOG.md has an entry for this change before finishing.
